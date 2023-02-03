@@ -27,7 +27,15 @@ def bbox_rel(*xyxy):
     return (bbox_left + bbox_w / 2), (bbox_top + bbox_h / 2), bbox_w, bbox_h
 
 
-def draw_boxes(img, bbox, identities=None, categories=None, names=None, color_box=None, offset=(0, 0)):
+def draw_boxes(
+    img,
+    bbox,
+    identities=None,
+    categories=None,
+    names=None,
+    color_box=None,
+    offset=(0, 0),
+):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
         x1 += offset[0]
@@ -44,19 +52,47 @@ def draw_boxes(img, bbox, identities=None, categories=None, names=None, color_bo
             (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
             cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (255, 191, 0), -1)
-            cv2.putText(img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, [255, 255, 255], 1)
+            cv2.putText(
+                img,
+                label,
+                (x1, y1 - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                [255, 255, 255],
+                1,
+            )
             cv2.circle(img, data, 3, color, -1)
         else:
             (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
             cv2.rectangle(img, (x1, y1), (x2, y2), (255, 191, 0), 2)
             cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (255, 191, 0), -1)
-            cv2.putText(img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, [255, 255, 255], 1)
+            cv2.putText(
+                img,
+                label,
+                (x1, y1 - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                [255, 255, 255],
+                1,
+            )
             cv2.circle(img, data, 3, (255, 191, 0), -1)
     return img
 
 
 @torch.no_grad()
-def infer(weights, source, img_size, conf_thres, iou_thres, classes, view_img, half, visualize, agnostic_nms, max_det):
+def infer(
+    weights,
+    source,
+    img_size,
+    conf_thres,
+    iou_thres,
+    classes,
+    view_img,
+    half,
+    visualize,
+    agnostic_nms,
+    max_det,
+):
     sort_tracker = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
     device = torch.device("cuda")
     model = DetectMultiBackend(weights, device)
@@ -77,7 +113,7 @@ def infer(weights, source, img_size, conf_thres, iou_thres, classes, view_img, h
         img /= 255
         if len(img.shape) == 3:
             img = img[None]
-        
+
         save_dir = "/"
         visualize = increment_path(save_dir, mkdir=True) if visualize else False
         prediction = model(img, augment=False, visualize=visualize)
@@ -108,8 +144,14 @@ def infer(weights, source, img_size, conf_thres, iou_thres, classes, view_img, h
                     [
                         cv2.line(
                             img0,
-                            (int(track.centroidarr[i][0]), int(track.centroidarr[i][1])),
-                            (int(track.centroidarr[i + 1][0]), int(track.centroidarr[i + 1][1])),
+                            (
+                                int(track.centroidarr[i][0]),
+                                int(track.centroidarr[i][1]),
+                            ),
+                            (
+                                int(track.centroidarr[i + 1][0]),
+                                int(track.centroidarr[i + 1][1]),
+                            ),
                             (124, 252, 0),
                             thickness=3,
                         )
@@ -137,14 +179,30 @@ def infer(weights, source, img_size, conf_thres, iou_thres, classes, view_img, h
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weights", nargs="+", type=str, default="./saved_models/yolov5s.pt", help="model path(s)")
-    parser.add_argument("--source", type=str, default=ROOT / "data/images", help="file/dir/URL/glob, 0 for webcam")
-    parser.add_argument("--img_size", nargs="+", default=(640,640), help="inference size h,w")
+    parser.add_argument(
+        "--weights",
+        nargs="+",
+        type=str,
+        default="./saved_models/yolov5s.pt",
+        help="model path(s)",
+    )
+    parser.add_argument(
+        "--source",
+        type=str,
+        default=ROOT / "data/images",
+        help="file/dir/URL/glob, 0 for webcam",
+    )
+    parser.add_argument("--img_size", nargs="+", default=(640, 640), help="inference size h,w")
     parser.add_argument("--conf_thres", type=float, default=0.25, help="confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.45, help="NMS IoU threshold")
     parser.add_argument("--max_det", type=int, default=1000, help="maximum detections per image")
     parser.add_argument("--view_img", action="store_false", help="show results")
-    parser.add_argument("--classes", nargs="+", type=int, help="filter by class: --classes 0, or --classes 0 2 3")
+    parser.add_argument(
+        "--classes",
+        nargs="+",
+        type=int,
+        help="filter by class: --classes 0, or --classes 0 2 3",
+    )
     parser.add_argument("--agnostic_nms", action="store_true", help="class-agnostic NMS")
     parser.add_argument("--visualize", action="store_true", help="visualize features")
     parser.add_argument("--half", action="store_true", help="use FP16 half-precision inference")
