@@ -1,0 +1,150 @@
+import os
+import sys
+import cv2
+import torch
+import torch.backends.cudnn as cudnn
+from pathlib import Path
+
+from tracker.sort import *
+from models.common import DetectMultiBackend
+from utils.general import check_img_size,increment_path,non_max_suppression,scale_coords
+from utils.dataloaders import LoadImages,LoadStreams
+
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
+ROOT = Path(os.path.relpath(ROOT,Path.cwd()))
+
+def bbox_rel(*xyxy):
+    """" Calculates the relative bounding box from absolute pixel values. """
+    bbox_left = min([xyxy[0].item(),xyxy[2].item()])
+    bbox_top = min([xyxy[1].item(),xyxy[3].item()])
+    bbox_w   = abs([xyxy[0].item() - xyxy[2].item()])
+    bbox_h   = abs([xyxy[1].item() - xyxy[3].item()])
+    return (bbox_left + bbox_w / 2),(bbox_top + bbox_h / 2),bbox_w,bbox_h
+
+def draw_boxes(img, bbox, identities=None, categories=None, 
+                names=None, color_box=None,offset=(0, 0)):
+    for i, box in enumerate(bbox):
+        x1, y1, x2, y2 = [int(i) for i in box]
+        x1 += offset[0]
+        x2 += offset[0]
+        y1 += offset[1]
+        y2 += offset[1]
+        cat = int(categories[i]) if categories is not None else 0
+        id = int(identities[i]) if identities is not None else 0
+        data = (int((box[0]+box[2])/2),(int((box[1]+box[3])/2)))
+        label = str(id)
+
+        if color_box:
+            color = (255,0,222)
+            (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+            cv2.rectangle(img, (x1, y1), (x2, y2),color, 2)
+            cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (255,191,0), -1)
+            cv2.putText(img, label, (x1, y1 - 5),cv2.FONT_HERSHEY_SIMPLEX, 0.6, 
+            [255, 255, 255], 1)
+            cv2.circle(img, data, 3, color,-1)
+        else:
+            (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+            cv2.rectangle(img, (x1, y1), (x2, y2),(255,191,0), 2)
+            cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (255,191,0), -1)
+            cv2.putText(img, label, (x1, y1 - 5),cv2.FONT_HERSHEY_SIMPLEX, 0.6, 
+            [255, 255, 255], 1)
+            cv2.circle(img, data, 3, (255,191,0),-1)
+    return img
+
+
+@torch.no_grad()
+def infer(weights,source,img_size,conf_thres,iou_thres,classes,view_img,half,visualize,agnostic_nms,max_det):
+    sort_tracker = Sort(max_age=5,min_hits=2,iou_threshold=0.2)
+    device = torch.device('cuda')
+    model = DetectMultiBackend(weights,device)
+    imgsz = check_img_size(imgsz=img_size,s = model.stride)
+    if model.pt or model.jit:
+        model.model.half() if half() else model.model.float()
+    if source.isnumeric():
+        cudnn.benchmark = True
+        dataset = LoadStreams(source,img_size=imgsz,stride=model.stride,auto=model.pt)
+        batch_size = len(dataset)
+    else:
+        dataset = LoadImages(source,img_size=imgsz,stride=model.stride,auto=model.pt)
+        batch_size = 1
+    for path,img,img_1,vid_cap,string in dataset:
+        img = torch.from_numpy(img).to(device)
+        img = img.half() if half else img.float()
+        img /= 255
+        if len(img.shape) == 3:
+            img = img[None]
+        
+        save_dir = './'
+        visualize = increment_path(save_dir,mkdir= True) if visualize else False
+        prediction = model(img,augment = False,visualize = visualize)
+        prediction = non_max_suppression(prediction,conf_thres,iou_thres,classes,agnostic_nms,max_det)
+
+        for i,det in enumerate(prediction):
+            if source.isnumeric():
+                p,img0,frame = path[i],img_1[i].copy(),dataset.count
+                string += f'{i}: '
+            else:
+                p,img0,frame = path,img_1.copy(),getattr(dataset.count,'frame',0)
+
+            string += '%gX%g ' % img.shape[2:]
+            if len(det):
+                det[:,:4] = scale_coords(img.shape[2:],det[:,:4],img0.shape).round()
+                for c in det[:,-1].unique():
+                    n = (det[:,-1] == c).sum()
+                    s += f"{n} {model.names[int(c)]}{'s' * (n > 1)}, "
+
+                dets_to_sort = np.empty((0,6))
+                # NOTE: We send in detected object class too
+                for x1,y1,x2,y2,conf,detclass in det.cpu().detach().numpy():
+                    dets_to_sort = np.vstack((dets_to_sort, 
+                                              np.array([x1, y1, x2, y2, 
+                                                        conf, detclass])))
+                tracked_dets = sort_tracker.update(dets_to_sort)
+                tracks =sort_tracker.getTrackers()
+
+                for track in tracks:
+                    [cv2.line(img0, (int(track.centroidarr[i][0]),int(track.centroidarr[i][1])), 
+                                (int(track.centroidarr[i+1][0]),int(track.centroidarr[i+1][1])),
+                                (124, 252, 0), thickness=3) for i,_ in  enumerate(track.centroidarr) 
+                                if i < len(track.centroidarr)-1 ] 
+                
+                # draw boxes for visualization
+                if len(tracked_dets)>0:
+                    bbox_xyxy = tracked_dets[:,:4]
+                    identities = tracked_dets[:, 8]
+                    categories = tracked_dets[:, 4]
+                    draw_boxes(img0, bbox_xyxy, identities, categories, model.names)
+
+            if view_img:
+                cv2.imshow(str(p), img0)
+                cv2.waitKey(1) 
+            # if save_img:
+            #     if dataset.mode == 'image':
+            #         cv2.imwrite(save_path, img0)
+            #     else:
+            #         if vid_path != save_path: 
+            #             vid_path = save_path
+            #             if isinstance(vid_writer, cv2.VideoWriter):
+            #                 vid_writer.release()  
+            #             if vid_cap: 
+            #                 fps = vid_cap.get(cv2.CAP_PROP_FPS)
+            #                 w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            #                 h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            #             else:
+            #                 fps, w, h = 30, img0.shape[1], img0.shape[0]
+            #                 save_path += '.mp4'
+            #             vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+            #         vid_writer.write(img0)
+        print("Frame Processing!")
+    print("Video Exported Success")
+
+    # if update:
+    #     strip_optimizer(weights)
+    
+    if vid_cap:
+        vid_cap.release()
+
+
