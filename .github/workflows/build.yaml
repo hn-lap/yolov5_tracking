@@ -12,25 +12,41 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
     - name: Set up Python 3.9
       uses: actions/setup-python@v3
       with:
         python-version: 3.9
+
     - name: Login Docker Hub
       uses: docker/login-action@v1
       with:
         username: ${{secrets.DOCKERHUB_USER_NAME}}
         password: ${{secrets.DOCKERHUB_ACCESS_TOKEN}}
 
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v1
+      id: buildx
 
-    # - name: Install black & isort
-    #   run: |
-    #     pip install black
-    #     pip install isort
-    #     black .
-    #     isort .
-    # - name: Install dependencies
-    #   run: |
-    #     python -m pip install --upgrade pip
-    #     export PYTHONPATH=.
-    #     if [ -f setup.txt ]; then pip install -r setup.txt; fi
+    - name: Cache Docker Image Layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+    - name: Build and push docker image
+      uses: docker/build-push-action@v2
+      id: docker_build
+      with:
+        context: ./
+        file: ./dockerfile
+        builder: ${{steps.buildx.outputs.name}}
+        push: true
+        tags: ${{secrets.DOCKERHUB_USER_NAME}}/object-tracking
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache
+
+    - name: Verify
+      run: echo ${{steps.docker_build.outputs.digest}}
