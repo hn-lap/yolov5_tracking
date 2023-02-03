@@ -61,8 +61,9 @@ def infer(weights, source, img_size, conf_thres, iou_thres, classes, view_img, h
     device = torch.device("cuda")
     model = DetectMultiBackend(weights, device)
     imgsz = check_img_size(imgsz=img_size, s=model.stride)
+    print(imgsz)
     if model.pt or model.jit:
-        model.model.half() if half() else model.model.float()
+        model.model.half() if half else model.model.float()
     if source.isnumeric():
         cudnn.benchmark = True
         dataset = LoadStreams(source, img_size=imgsz, stride=model.stride, auto=model.pt)
@@ -76,8 +77,8 @@ def infer(weights, source, img_size, conf_thres, iou_thres, classes, view_img, h
         img /= 255
         if len(img.shape) == 3:
             img = img[None]
-
-        save_dir = "./"
+        
+        save_dir = "/"
         visualize = increment_path(save_dir, mkdir=True) if visualize else False
         prediction = model(img, augment=False, visualize=visualize)
         prediction = non_max_suppression(prediction, conf_thres, iou_thres, classes, agnostic_nms, max_det)
@@ -94,7 +95,7 @@ def infer(weights, source, img_size, conf_thres, iou_thres, classes, view_img, h
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img0.shape).round()
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()
-                    s += f"{n} {model.names[int(c)]}{'s' * (n > 1)}, "
+                    string += f"{n} {model.names[int(c)]}{'s' * (n > 1)}, "
 
                 dets_to_sort = np.empty((0, 6))
                 # NOTE: We send in detected object class too
@@ -136,9 +137,9 @@ def infer(weights, source, img_size, conf_thres, iou_thres, classes, view_img, h
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weights", nargs="+", type=str, default=ROOT / "yolov5s.pt", help="model path(s)")
+    parser.add_argument("--weights", nargs="+", type=str, default="./saved_models/yolov5s.pt", help="model path(s)")
     parser.add_argument("--source", type=str, default=ROOT / "data/images", help="file/dir/URL/glob, 0 for webcam")
-    parser.add_argument("--img_size", nargs="+", type=int, default=[640], help="inference size h,w")
+    parser.add_argument("--img_size", nargs="+", default=(640,640), help="inference size h,w")
     parser.add_argument("--conf_thres", type=float, default=0.25, help="confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.45, help="NMS IoU threshold")
     parser.add_argument("--max_det", type=int, default=1000, help="maximum detections per image")
@@ -152,6 +153,7 @@ def parse_opt():
 
 
 def main(opt):
+    print(vars(opt))
     infer(**vars(opt))
 
 
