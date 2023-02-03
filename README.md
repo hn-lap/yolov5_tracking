@@ -15,3 +15,7 @@ python object_detect.py --weights ./saved_models/yolov5s.pt --source 2.mp4 --cla
 # Run object detection + tracking (yolov5 + sort)
 python object_tracking.py --weights ./saved_models/yolov5s.pt --source 2.mp4 --classes 0
 ```
+
+## Refers
+
+1. [ultralytics/yolov5: YOLOv5 🚀 in PyTorch &gt; ONNX &gt; CoreML &gt; TFLite (github.com)](https://github.com/ultralytics/yolov5)
