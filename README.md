@@ -2,7 +2,6 @@
 
 1. Yolov5 object detection
 2. Simple Online and Realtime Tracking (SORT)
-3. Run object detection
 
 ## Setup
 
@@ -27,5 +26,6 @@ python object_detect.py --weights ./saved_models/yolov5s.pt --source 2.mp4 --cla
 python object_tracking.py --weights ./saved_models/yolov5s.pt --source 2.mp4 --classes 0
 ```
 
-## Refers
+## References
 1. [ultralytics/yolov5: YOLOv5 🚀 in PyTorch &gt; ONNX &gt; CoreML &gt; TFLite (github.com)](https://github.com/ultralytics/yolov5)
+2. https://github.com/abewley/sort
