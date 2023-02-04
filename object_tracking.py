@@ -131,15 +131,12 @@ def infer(
                             1,
                         )
                         cv2.circle(img0, centroid, 3, (255, 191, 0), -1)
-                        th = 0
                         if points is not None:
                             img0 = draw_polygon(img0, points)
 
                             if (shapely.contains(Polygon(points), Point(centroid))) == True:
                                 print("Save image")
-                                img = save_frame_alert(img0, th)
-                                th += 1
-                                print(th)
+                                img = save_frame_alert(img0, "test")
                                 for track in tracks:
                                     for i, _ in enumerate(track.centroidarr):
                                         if i < len(track.centroidarr) - 1:
@@ -157,23 +154,23 @@ def infer(
                                                 thickness=3,
                                             )
 
-                        if points == None:
-                            for track in tracks:
-                                for i, _ in enumerate(track.centroidarr):
-                                    if i < len(track.centroidarr) - 1:
-                                        cv2.line(
-                                            img0,
-                                            (
-                                                int(track.centroidarr[i][0]),
-                                                int(track.centroidarr[i][1]),
-                                            ),
-                                            (
-                                                int(track.centroidarr[i + 1][0]),
-                                                int(track.centroidarr[i + 1][1]),
-                                            ),
-                                            (124, 32, 250),
-                                            thickness=3,
-                                        )
+                        # if points == None:
+                        #     for track in tracks:
+                        #         for i, _ in enumerate(track.centroidarr):
+                        #             if i < len(track.centroidarr) - 1:
+                        #                 cv2.line(
+                        #                     img0,
+                        #                     (
+                        #                         int(track.centroidarr[i][0]),
+                        #                         int(track.centroidarr[i][1]),
+                        #                     ),
+                        #                     (
+                        #                         int(track.centroidarr[i + 1][0]),
+                        #                         int(track.centroidarr[i + 1][1]),
+                        #                     ),
+                        #                     (124, 32, 250),
+                        #                     thickness=3,
+                        #                 )
             if view_img:
                 cv2.imshow(str(p), img0)
                 cv2.waitKey(1)
@@ -218,11 +215,11 @@ def parse_opt():
 def main(opt):
     # test
     points = [
-        [599, 391],
-        [469, 399],
-        [467, 222],
-        [575, 228],
-        [599, 391],
+        [970, 434],
+        [713, 434],
+        [702, 183],
+        [958, 170],
+        [970, 434],
     ]
     print(vars(opt))
     infer(**vars(opt), points=points)
