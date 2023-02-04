@@ -1,10 +1,14 @@
 import os
 import sys
 from pathlib import Path
+from typing import List, Tuple
 
 import cv2
+import shapely
 import torch
 import torch.backends.cudnn as cudnn
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
 
 from models.common import DetectMultiBackend
 from tracker.sort import *
@@ -18,86 +22,38 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 
-def bbox_rel(*xyxy):
-    """ " Calculates the relative bounding box from absolute pixel values."""
-    bbox_left = min([xyxy[0].item(), xyxy[2].item()])
-    bbox_top = min([xyxy[1].item(), xyxy[3].item()])
-    bbox_w = abs([xyxy[0].item() - xyxy[2].item()])
-    bbox_h = abs([xyxy[1].item() - xyxy[3].item()])
-    return (bbox_left + bbox_w / 2), (bbox_top + bbox_h / 2), bbox_w, bbox_h
-
-
-def draw_boxes(
-    img,
-    bbox,
-    identities=None,
-    categories=None,
-    names=None,
-    color_box=None,
-    offset=(0, 0),
-):
-    for i, box in enumerate(bbox):
-        x1, y1, x2, y2 = [int(i) for i in box]
-        x1 += offset[0]
-        x2 += offset[0]
-        y1 += offset[1]
-        y2 += offset[1]
-        cat = int(categories[i]) if categories is not None else 0
-        id = int(identities[i]) if identities is not None else 0
-        data = (int((box[0] + box[2]) / 2), (int((box[1] + box[3]) / 2)))
-        label = str(id)
-
-        if color_box:
-            color = (255, 0, 222)
-            (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
-            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-            cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (255, 191, 0), -1)
-            cv2.putText(
-                img,
-                label,
-                (x1, y1 - 5),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                [255, 255, 255],
-                1,
-            )
-            cv2.circle(img, data, 3, color, -1)
-        else:
-            (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
-            cv2.rectangle(img, (x1, y1), (x2, y2), (255, 191, 0), 2)
-            cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (255, 191, 0), -1)
-            cv2.putText(
-                img,
-                label,
-                (x1, y1 - 5),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                [255, 255, 255],
-                1,
-            )
-            cv2.circle(img, data, 3, (255, 191, 0), -1)
+def save_frame_alert(img, i):
+    cv2.putText(img, "ALARM", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    cv2.imwrite(f"./alert_folder/alert_{i}.png", img)
     return img
+
+
+def draw_polygon(frame, points):
+    for point in points:
+        frame = cv2.circle(frame, (point[0], point[1]), 5, (0, 0, 255), -1)
+    frame = cv2.polylines(frame, [np.int32(points)], False, (255, 0, 0), thickness=2)
+    return frame
 
 
 @torch.no_grad()
 def infer(
-    weights,
-    source,
-    img_size,
-    conf_thres,
-    iou_thres,
-    classes,
-    view_img,
-    half,
-    visualize,
-    agnostic_nms,
-    max_det,
+    weights="./saved_models/yolov5s.pt",
+    source: str = "video.mp4",
+    img_size: Tuple[int] = (640, 640),
+    conf_thres: float = 0.25,
+    iou_thres: float = 0.35,
+    classes: str = 0,
+    view_img: bool = True,
+    half: bool = False,
+    visualize: bool = False,
+    agnostic_nms: bool = False,
+    max_det: int = 1000,
+    points: List[int] = None,
 ):
     sort_tracker = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
     device = torch.device("cuda")
     model = DetectMultiBackend(weights, device)
     imgsz = check_img_size(imgsz=img_size, s=model.stride)
-    print(imgsz)
     if model.pt or model.jit:
         model.model.half() if half else model.model.float()
     if source.isnumeric():
@@ -128,7 +84,9 @@ def infer(
 
             string += "%gX%g " % img.shape[2:]
             if len(det):
+                # rescale bbox img to img0
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img0.shape).round()
+                # Count object
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()
                     string += f"{n} {model.names[int(c)]}{'s' * (n > 1)}, "
@@ -140,41 +98,87 @@ def infer(
                 tracked_dets = sort_tracker.update(dets_to_sort)
                 tracks = sort_tracker.getTrackers()
 
-                for track in tracks:
-                    [
-                        cv2.line(
-                            img0,
-                            (
-                                int(track.centroidarr[i][0]),
-                                int(track.centroidarr[i][1]),
-                            ),
-                            (
-                                int(track.centroidarr[i + 1][0]),
-                                int(track.centroidarr[i + 1][1]),
-                            ),
-                            (124, 252, 0),
-                            thickness=3,
-                        )
-                        for i, _ in enumerate(track.centroidarr)
-                        if i < len(track.centroidarr) - 1
-                    ]
-
-                # draw boxes for visualization
                 if len(tracked_dets) > 0:
                     bbox_xyxy = tracked_dets[:, :4]
                     identities = tracked_dets[:, 8]
                     categories = tracked_dets[:, 4]
-                    draw_boxes(img0, bbox_xyxy, identities, categories, model.names)
+                    offset = (0, 0)
 
+                    for i, box in enumerate(bbox_xyxy):
+                        x1, y1, x2, y2 = [int(i) for i in box]
+                        x1 += offset[0]
+                        x2 += offset[0]
+                        y1 += offset[1]
+                        y2 += offset[1]
+                        cat = int(categories[i]) if categories is not None else 0
+                        id = int(identities[i]) if identities is not None else 0
+                        centroid = (
+                            int((box[0] + box[2]) / 2),
+                            (int((box[1] + box[3]) / 2)),
+                        )
+                        label = str(id)
+
+                        (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+                        cv2.rectangle(img0, (x1, y1), (x2, y2), (255, 191, 0), 2)
+                        cv2.rectangle(img0, (x1, y1 - 20), (x1 + w, y1), (255, 191, 0), -1)
+                        cv2.putText(
+                            img0,
+                            label,
+                            (x1, y1 - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6,
+                            [255, 255, 255],
+                            1,
+                        )
+                        cv2.circle(img0, centroid, 3, (255, 191, 0), -1)
+                        th = 0
+                        if points is not None:
+                            img0 = draw_polygon(img0, points)
+
+                            if (shapely.contains(Polygon(points), Point(centroid))) == True:
+                                print("Save image")
+                                img = save_frame_alert(img0, th)
+                                th += 1
+                                print(th)
+                                for track in tracks:
+                                    for i, _ in enumerate(track.centroidarr):
+                                        if i < len(track.centroidarr) - 1:
+                                            cv2.line(
+                                                img,
+                                                (
+                                                    int(track.centroidarr[i][0]),
+                                                    int(track.centroidarr[i][1]),
+                                                ),
+                                                (
+                                                    int(track.centroidarr[i + 1][0]),
+                                                    int(track.centroidarr[i + 1][1]),
+                                                ),
+                                                (124, 32, 250),
+                                                thickness=3,
+                                            )
+
+                        if points == None:
+                            for track in tracks:
+                                for i, _ in enumerate(track.centroidarr):
+                                    if i < len(track.centroidarr) - 1:
+                                        cv2.line(
+                                            img0,
+                                            (
+                                                int(track.centroidarr[i][0]),
+                                                int(track.centroidarr[i][1]),
+                                            ),
+                                            (
+                                                int(track.centroidarr[i + 1][0]),
+                                                int(track.centroidarr[i + 1][1]),
+                                            ),
+                                            (124, 32, 250),
+                                            thickness=3,
+                                        )
             if view_img:
                 cv2.imshow(str(p), img0)
                 cv2.waitKey(1)
-
-    # if update:
-    #     strip_optimizer(weights)
-
-    if vid_cap:
-        vid_cap.release()
+            else:
+                return img0
 
 
 def parse_opt():
@@ -206,13 +210,22 @@ def parse_opt():
     parser.add_argument("--agnostic_nms", action="store_true", help="class-agnostic NMS")
     parser.add_argument("--visualize", action="store_true", help="visualize features")
     parser.add_argument("--half", action="store_true", help="use FP16 half-precision inference")
+
     opt = parser.parse_args()
     return opt
 
 
 def main(opt):
+    # test
+    points = [
+        [599, 391],
+        [469, 399],
+        [467, 222],
+        [575, 228],
+        [599, 391],
+    ]
     print(vars(opt))
-    infer(**vars(opt))
+    infer(**vars(opt), points=points)
 
 
 if __name__ == "__main__":

@@ -42,7 +42,6 @@ def linear_assignment(cost_matrix):
 
 
 def iou_batch(bb_test, bb_gt):
-
     bb_gt = np.expand_dims(bb_gt, 0)
     bb_test = np.expand_dims(bb_test, 1)
 
@@ -92,7 +91,6 @@ def convert_x_to_bbox(x, score=None):
 
 
 class KalmanBoxTracker(object):
-
     count = 0
 
     def __init__(self, bbox):

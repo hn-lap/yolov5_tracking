@@ -9,7 +9,7 @@
             "type": "python",
             "request": "launch",
             "program": "object_tracking.py",
-            "args": ["--weights","yolov5s.pt","--source","2.mp4","--classes","0"],
+            "args": ["--weights","yolov5s.pt","--source","video.mp4","--classes","0"],
             "console": "integratedTerminal",
             "justMyCode": true
         }
