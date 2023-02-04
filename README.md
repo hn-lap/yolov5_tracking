@@ -14,6 +14,7 @@ pip install -r setup.txt
 ```
 
 ## Run
+1. Run object tracking
 ```python
 # Run object detection
 python object_detect.py --weights ./saved_models/yolov5s.pt --source 2.mp4 --classes 0
