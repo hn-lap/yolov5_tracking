@@ -2,6 +2,7 @@
 
 1. Yolov5 object detection
 2. Simple Online and Realtime Tracking (SORT)
+3. Deep Simple Online and Realtime Tracking (Deep SORT)
 
 ## Setup
 
@@ -30,6 +31,12 @@ python object_detect.py --weights ./saved_models/yolov5s.pt --source 2.mp4 --cla
 # Run object detection + tracking (yolov5 + sort)
 python object_tracking.py --weights ./saved_models/yolov5s.pt --source 2.mp4 --classes 0
 ```
+
+## Model library
+
+| **2D Detection** | **Multi Object Tracking** | others |
+| ---------------------- | ------------------------------- | ------ |
+| Yolov5                 | 1.Sort<br />2. Deep Sort       |        |
 
 ## References
 

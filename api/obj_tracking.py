@@ -1,17 +1,13 @@
-import os
-import sys
-from pathlib import Path
 from typing import Tuple
 
 import cv2
 import torch
-import torch.backends.cudnn as cudnn
 
-from draws import draw_boxes
+from utils import draw_boxes
 from models.common import DetectMultiBackend
-from tracker.sort import *
-from utils.dataloaders import LoadImages, LoadStreams
-from utils.general import check_img_size, increment_path, non_max_suppression, scale_coords
+from trackers.sort import *
+from utils.dataloaders import LoadImages
+from utils.general import check_img_size, non_max_suppression, scale_coords
 from utils.plots import Annotator, colors
 
 
@@ -91,7 +87,5 @@ class YOLOV5_SORT:
 
 if __name__ == "__main__":
     inference = YOLOV5_SORT(weights="../saved_models/yolov5s.pt", img_size=(640, 640), classes=0, tracking=False)
-    import cv2
-
     img = cv2.imread("G:/HN_LAP/yolov5_tracking/test_folder/1.jpg")
     inference.infer(source=img)
