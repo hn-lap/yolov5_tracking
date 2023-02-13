@@ -60,10 +60,46 @@ class YOLOV5_TRACKING:
         dataset = LoadImages(path=source, img_size=img_size)
         return dataset, img_size
 
-    def infer(self, source: os.path, view_video: bool = True, save_img: bool = False) -> np.ndarray:
+    def infer_object_detect(self, source: os.path, view_video: bool = True, save_img: bool = False):
         minibatch, img_size = self._dataloader(source=source)
         self.model.warmup(imgsz=(1 if self.model.pt else 1, 3, *img_size))
+        for path, img_1, img_2, vid_cap, string in minibatch:
+            img = torch.from_numpy(img_1).to(self.device).float()
+            img /= 255
+            if len(img.shape) == 3:
+                img = img[None]
 
+            pred = self.model(img, augment=False)
+            pred = non_max_suppression(pred, classes=self.classes, max_det=1000)
+
+            for i, det in enumerate(pred):
+                p, img_3, frame = (
+                    path,
+                    img_2.copy(),
+                    getattr(minibatch.count, "frame", 0),
+                )
+                annotator = Annotator(img_3, line_width=3, example=str(self.model.names))
+                if len(det):
+                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_3.shape).round()
+                for *xyxy, conf, cls in reversed(det):
+                    c = int(cls)  # integer class
+                    label = (
+                        None
+                        if self.hide_labels
+                        else (self.model.names[c] if self.hide_conf else f"{self.model.names[c]} {conf:.2f}")
+                    )
+                    annotator.box_label(xyxy, label, color=colors(c, True))
+                if view_video:
+                    cv2.imshow("video ob", img_3)
+                    cv2.waitKey(1)
+                if save_img:
+                    cv2.imwrite("result_ob_det.png", img_3)
+
+    def infer_simple_object_recognition_tracking(
+        self, source: os.path, view_video: bool = True, save_img: bool = False
+    ):
+        minibatch, img_size = self._dataloader(source=source)
+        self.model.warmup(imgsz=(1 if self.model.pt else 1, 3, *img_size))
         for path, img_1, img_2, vid_cap, string in minibatch:
             img = torch.from_numpy(img_1).to(self.device).float()
             img /= 255
@@ -81,87 +117,93 @@ class YOLOV5_TRACKING:
                 )
                 if len(det):
                     det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_3.shape).round()
-
-                    for c in det[:, -1].unique():
-                        n = (det[:, -1] == c).sum()
-
-                    if self.tracking:
-                        if self.type_mot == "sort":
-                            dets_to_sort = np.empty((0, 6))
-                            for x1, y1, x2, y2, conf, detclass in det.cpu().detach().numpy():
-                                dets_to_sort = np.vstack(
+                    dets_to_sort = np.empty((0, 6))
+                    for x1, y1, x2, y2, conf, detclass in det.cpu().detach().numpy():
+                        dets_to_sort = np.vstack((dets_to_sort, np.array([x1, y1, x2, y2, conf, detclass])))
+                    tracked_dets = self.sort_tracker.update(dets_to_sort)
+                    tracks = self.sort_tracker.getTrackers()
+                    for track in tracks:
+                        for i, _ in enumerate(track.centroidarr):
+                            if i < len(track.centroidarr) - 1:
+                                cv2.line(
+                                    img_3,
                                     (
-                                        dets_to_sort,
-                                        np.array([x1, y1, x2, y2, conf, detclass]),
-                                    )
+                                        int(track.centroidarr[i][0]),
+                                        int(track.centroidarr[i][1]),
+                                    ),
+                                    (
+                                        int(track.centroidarr[i + 1][0]),
+                                        int(track.centroidarr[i + 1][1]),
+                                    ),
+                                    (124, 32, 250),
+                                    thickness=3,
                                 )
-                            tracked_dets = self.sort_tracker.update(dets_to_sort)
-                            tracks = self.sort_tracker.getTrackers()
-                            if len(tracked_dets) > 0:
-                                bbox_xyxy = tracked_dets[:, :4]
-                                identities = tracked_dets[:, 8]
-                                categories = tracked_dets[:, 4]
-                                draw_bbox(img_3, bbox_xyxy, categories, identities)
-                        elif self.type_mot == "deep_sort":
-                            bbox_xywh = []
-                            confs = []
-                            for *xyxy, conf, cls in det:
-                                x_c, y_c, bbox_w, bbox_h = bbox_rel(*xyxy)
-                                obj = [x_c, y_c, bbox_w, bbox_h]
-                                bbox_xywh.append(obj)
-                                confs.append([conf.item()])
+                    if len(tracked_dets) > 0:
+                        bbox_xyxy = tracked_dets[:, :4]
+                        identities = tracked_dets[:, 8]
+                        categories = tracked_dets[:, 4]
+                        draw_bbox(img_3, bbox_xyxy, categories, identities)
 
-                            xywhs = torch.Tensor(bbox_xywh)
-                            confss = torch.Tensor(confs)
-                            outputs = self.deepsort.update(xywhs, confss, img_3)
-                            if len(outputs) > 0:
-                                bbox_xyxy = outputs[:, :4]
-                                identities = outputs[:, -1]
-                                # draw_boxes(img_3, bbox_xyxy, identities)
-                                draw_bbox(img_3, bbox_xyxy=bbox_xyxy, identities=identities)
+                if view_video:
+                    cv2.imshow("video", img_3)
+                    cv2.waitKey(1)
+                if save_img:
+                    cv2.imwrite("result_ob_sort.png", img_3)
 
-                            annotator = Annotator(img_3, line_width=3, example=str(self.model.names))
-                            # yolo write detection result
-                            # Write results
-                            for *xyxy, conf, cls in reversed(det):
-                                if view_video:
-                                    c = int(cls)  # integer class
-                                    label = (
-                                        None
-                                        if self.hide_labels
-                                        else (
-                                            self.model.names[c]
-                                            if self.hide_conf
-                                            else f"{self.model.names[c]} {conf:.2f}"
-                                        )
-                                    )
-                                    annotator.box_label(xyxy, label, color=colors(c, True))
+    def infer_deep_sort(self, source: os.path, view_video: bool = True, save_img: bool = False):
+        minibatch, img_size = self._dataloader(source=source)
+        self.model.warmup(imgsz=(1 if self.model.pt else 1, 3, *img_size))
+        for path, img_1, img_2, vid_cap, string in minibatch:
+            img = torch.from_numpy(img_1).to(self.device).float()
+            img /= 255
+            if len(img.shape) == 3:
+                img = img[None]
 
-                        if view_video:
-                            cv2.imshow("test", img_3)
-                            cv2.waitKey(1)
-                        if save_img:
-                            cv2.imwrite("result.png", img_3)
-                    else:
-                        annotator = Annotator(img_3, line_width=3, example=str(self.model.names))
-                        for *xyxy, conf, cls in reversed(det):
-                            c = int(cls)  # integer class
-                            label = (
-                                None
-                                if self.hide_labels
-                                else (self.model.names[c] if self.hide_conf else f"{self.model.names[c]} {conf:.2f}")
-                            )
-                            annotator.box_label(xyxy, label, color=colors(c, True))
-                        img_3 = annotator.result()
+            pred = self.model(img, augment=False)
+            pred = non_max_suppression(pred, classes=self.classes, max_det=1000)
 
-                    if view_video:
-                        cv2.imshow("test", img_3)
-                        cv2.waitKey(1)
-                    if save_img:
-                        cv2.imwrite("result.png", img_3)
+            for i, det in enumerate(pred):
+                p, img_3, frame = (
+                    path,
+                    img_2.copy(),
+                    getattr(minibatch.count, "frame", 0),
+                )
+                if len(det):
+                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_3.shape).round()
+                    bbox_xywh = []
+                    confs = []
+                    ## Adapt detections to deep sort input format
+                    for *xyxy, conf, cls in det:
+                        x_c, y_c, bbox_w, bbox_h = bbox_rel(*xyxy)
+                        obj = [x_c, y_c, bbox_w, bbox_h]
+                        bbox_xywh.append(obj)
+                        confs.append([conf.item()])
+
+                    xywhs = torch.Tensor(bbox_xywh)
+                    confss = torch.Tensor(confs)
+
+                    outputs = self.deepsort.update(xywhs, confss, img_3)
+                    if len(outputs) > 0:
+                        bbox_xyxy = outputs[:, :4]
+                        identities = outputs[:, -1]
+                        draw_boxes(img_3, bbox_xyxy, identities)
+                    annotator = Annotator(img_3, line_width=3, example=str(self.model.names))
+                    for *xyxy, conf, cls in reversed(det):
+                        c = int(cls)  # integer class
+                        label = (
+                            None
+                            if self.hide_labels
+                            else (self.model.names[c] if self.hide_conf else f"{self.model.names[c]} {conf:.2f}")
+                        )
+                        annotator.box_label(xyxy, label, color=colors(c, True))
                 else:
                     self.deepsort.increment_ages()
-            return img_3
+
+                if view_video:
+                    cv2.imshow("video", img_3)
+                    cv2.waitKey(1)
+                else:
+                    cv2.imwrite("result_deep_sort.png", img_3)
 
 
 if __name__ == "__main__":
@@ -172,4 +214,4 @@ if __name__ == "__main__":
         tracking=True,
         type_mot="deep_sort",
     )
-    inference.infer(source="./test.mp4", view_video=True, save_img=False)
+    inference.infer_deep_sort(source="./test.mp4", view_video=True, save_img=False)
