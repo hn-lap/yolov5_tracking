@@ -17,43 +17,42 @@ class YOLOV5_TRACKING:
         weights: str,
         img_size: Tuple[int],
         classes: str,
-        tracking: bool = False,
         type_mot: str = "deep_sort",
         config_file: str = "./trackers/deep_sort_pytorch/configs/deep_sort.yaml",
     ) -> None:
         self.weights = weights
         self.img_size = img_size
         self.classes = classes
-        self.tracking = tracking
         self.hide_labels = False
         self.hide_conf = False
         self.type_mot = type_mot
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._load_model(tracking=tracking, type_mot=self.type_mot, config_file=config_file)
+        self._load_model(type_mot=self.type_mot, config_file=config_file)
 
     def _load_model(
         self,
-        tracking: bool = False,
         type_mot: str = "deep_sort",
         config_file: str = None,
     ) -> None:
         self.model = DetectMultiBackend(weights=self.weights, device=self.device)
-        if tracking:
-            if type_mot == "sort":
-                self.sort_tracker = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
-            elif type_mot == "deep_sort":
-                cfg = get_config()
-                cfg.merge_from_file(config_file=config_file)
-                self.deepsort = DeepSort(
-                    cfg["DEEPSORT"]["REID_CKPT"],
-                    min_confidence=cfg["DEEPSORT"]["MIN_CONFIDENCE"],
-                    max_dist=cfg["DEEPSORT"]["MAX_DIST"],
-                    nms_max_overlap=cfg["DEEPSORT"]["NMS_MAX_OVERLAP"],
-                    max_iou_distance=cfg["DEEPSORT"]["MAX_IOU_DISTANCE"],
-                    n_init=cfg["DEEPSORT"]["N_INIT"],
-                    nn_budget=cfg["DEEPSORT"]["NN_BUDGET"],
-                    use_cuda=True,
-                )
+        if type_mot == "sort":
+            self.sort_tracker = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
+        elif type_mot == "deep_sort":
+            cfg = get_config()
+            cfg.merge_from_file(config_file=config_file)
+            self.deepsort = DeepSort(
+                cfg["DEEPSORT"]["REID_CKPT"],
+                min_confidence=cfg["DEEPSORT"]["MIN_CONFIDENCE"],
+                max_dist=cfg["DEEPSORT"]["MAX_DIST"],
+                nms_max_overlap=cfg["DEEPSORT"]["NMS_MAX_OVERLAP"],
+                max_iou_distance=cfg["DEEPSORT"]["MAX_IOU_DISTANCE"],
+                n_init=cfg["DEEPSORT"]["N_INIT"],
+                nn_budget=cfg["DEEPSORT"]["NN_BUDGET"],
+                use_cuda=True,
+            )
+        elif type_mot == "null":
+            self.sort_tracker = None
+            self.deepsort = None
 
     def _dataloader(self, source: os.path) -> Tuple[str, np.ndarray, np.ndarray, str, str]:
         img_size = check_img_size(self.img_size, s=self.model.stride)
@@ -206,12 +205,61 @@ class YOLOV5_TRACKING:
                     cv2.imwrite("result_deep_sort.png", img_3)
 
 
-if __name__ == "__main__":
-    inference = YOLOV5_TRACKING(
-        weights="./saved_models/yolov5s.pt",
-        img_size=(640, 640),
-        classes=0,
-        tracking=True,
-        type_mot="deep_sort",
+def parse_opt():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--weights",
+        nargs="+",
+        type=str,
+        default="./saved_models/yolov5s.pt",
+        help="model path(s)",
     )
-    inference.infer_deep_sort(source="./test.mp4", view_video=True, save_img=False)
+    parser.add_argument(
+        "--source",
+        type=str,
+        default="./test.mp4",
+        help="file/dir/URL/glob, 0 for webcam",
+    )
+    parser.add_argument("--img_size", nargs="+", default=(640, 640), help="inference size h,w")
+    parser.add_argument(
+        "--classes",
+        nargs="+",
+        type=int,
+        help="filter by class: --classes 0, or --classes 0 2 3",
+    )
+    parser.add_argument("--type_mot", type=str, default="sort", help="type multi object tracking")
+
+    opt = parser.parse_args()
+    return opt
+
+
+def main(opt):
+    opt = vars(opt)
+    if opt["type_mot"] == "sort":
+        inference = YOLOV5_TRACKING(
+            weights=opt["weights"],
+            img_size=opt["img_size"],
+            classes=opt["classes"],
+            type_mot=opt["type_mot"],
+        )
+        inference.infer_simple_object_recognition_tracking(source=opt["source"], view_video=True, save_img=False)
+    elif opt["type_mot"] == "deep_sort":
+        inference = YOLOV5_TRACKING(
+            weights=opt["weights"],
+            img_size=opt["img_size"],
+            classes=opt["classes"],
+            type_mot=opt["type_mot"],
+        )
+        inference.infer_deep_sort(source=opt["source"], view_video=True, save_img=False)
+    else:
+        inference = YOLOV5_TRACKING(
+            weights=opt["weights"],
+            img_size=opt["img_size"],
+            classes=opt["classes"],
+            type_mot=opt["type_mot"],
+        )
+        inference.infer_object_detect(source=opt["source"], view_video=True, save_img=False)
+
+
+if __name__ == "__main__":
+    main(parse_opt())
