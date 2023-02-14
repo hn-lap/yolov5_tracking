@@ -1,6 +1,5 @@
 from .deep_sort import DeepSort
 
-
 __all__ = ["DeepSort", "build_tracker"]
 
 

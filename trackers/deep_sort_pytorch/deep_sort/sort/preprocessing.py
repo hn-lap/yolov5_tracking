@@ -1,6 +1,6 @@
 # vim: expandtab:ts=4:sw=4
-import numpy as np
 import cv2
+import numpy as np
 
 
 def non_max_suppression(boxes, max_bbox_overlap, scores=None):
@@ -66,6 +66,8 @@ def non_max_suppression(boxes, max_bbox_overlap, scores=None):
 
         overlap = (w * h) / area[idxs[:last]]
 
-        idxs = np.delete(idxs, np.concatenate(([last], np.where(overlap > max_bbox_overlap)[0])))
+        idxs = np.delete(
+            idxs, np.concatenate(([last], np.where(overlap > max_bbox_overlap)[0]))
+        )
 
     return pick

@@ -3,12 +3,12 @@ from typing import Tuple
 import cv2
 import torch
 
+from graphs import bbox_rel, draw_bbox, draw_boxes
 from models.common import DetectMultiBackend
 from trackers import *
 from utils.dataloaders import LoadImages
 from utils.general import check_img_size, non_max_suppression, scale_coords
 from utils.plots import Annotator, colors
-from graphs import draw_boxes, bbox_rel, draw_bbox
 
 
 class YOLOV5_TRACKING:
@@ -54,12 +54,16 @@ class YOLOV5_TRACKING:
             self.sort_tracker = None
             self.deepsort = None
 
-    def _dataloader(self, source: os.path) -> Tuple[str, np.ndarray, np.ndarray, str, str]:
+    def _dataloader(
+        self, source: os.path
+    ) -> Tuple[str, np.ndarray, np.ndarray, str, str]:
         img_size = check_img_size(self.img_size, s=self.model.stride)
         dataset = LoadImages(path=source, img_size=img_size)
         return dataset, img_size
 
-    def infer_object_detect(self, source: os.path, view_video: bool = True, save_img: bool = False):
+    def infer_object_detect(
+        self, source: os.path, view_video: bool = True, save_img: bool = False
+    ):
         minibatch, img_size = self._dataloader(source=source)
         self.model.warmup(imgsz=(1 if self.model.pt else 1, 3, *img_size))
         for path, img_1, img_2, vid_cap, string in minibatch:
@@ -77,15 +81,23 @@ class YOLOV5_TRACKING:
                     img_2.copy(),
                     getattr(minibatch.count, "frame", 0),
                 )
-                annotator = Annotator(img_3, line_width=3, example=str(self.model.names))
+                annotator = Annotator(
+                    img_3, line_width=3, example=str(self.model.names)
+                )
                 if len(det):
-                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_3.shape).round()
+                    det[:, :4] = scale_coords(
+                        img.shape[2:], det[:, :4], img_3.shape
+                    ).round()
                 for *xyxy, conf, cls in reversed(det):
                     c = int(cls)  # integer class
                     label = (
                         None
                         if self.hide_labels
-                        else (self.model.names[c] if self.hide_conf else f"{self.model.names[c]} {conf:.2f}")
+                        else (
+                            self.model.names[c]
+                            if self.hide_conf
+                            else f"{self.model.names[c]} {conf:.2f}"
+                        )
                     )
                     annotator.box_label(xyxy, label, color=colors(c, True))
                 if view_video:
@@ -115,10 +127,14 @@ class YOLOV5_TRACKING:
                     getattr(minibatch.count, "frame", 0),
                 )
                 if len(det):
-                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_3.shape).round()
+                    det[:, :4] = scale_coords(
+                        img.shape[2:], det[:, :4], img_3.shape
+                    ).round()
                     dets_to_sort = np.empty((0, 6))
                     for x1, y1, x2, y2, conf, detclass in det.cpu().detach().numpy():
-                        dets_to_sort = np.vstack((dets_to_sort, np.array([x1, y1, x2, y2, conf, detclass])))
+                        dets_to_sort = np.vstack(
+                            (dets_to_sort, np.array([x1, y1, x2, y2, conf, detclass]))
+                        )
                     tracked_dets = self.sort_tracker.update(dets_to_sort)
                     tracks = self.sort_tracker.getTrackers()
                     for track in tracks:
@@ -149,7 +165,9 @@ class YOLOV5_TRACKING:
                 if save_img:
                     cv2.imwrite("result_ob_sort.png", img_3)
 
-    def infer_deep_sort(self, source: os.path, view_video: bool = True, save_img: bool = False):
+    def infer_deep_sort(
+        self, source: os.path, view_video: bool = True, save_img: bool = False
+    ):
         minibatch, img_size = self._dataloader(source=source)
         self.model.warmup(imgsz=(1 if self.model.pt else 1, 3, *img_size))
         for path, img_1, img_2, vid_cap, string in minibatch:
@@ -168,7 +186,9 @@ class YOLOV5_TRACKING:
                     getattr(minibatch.count, "frame", 0),
                 )
                 if len(det):
-                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_3.shape).round()
+                    det[:, :4] = scale_coords(
+                        img.shape[2:], det[:, :4], img_3.shape
+                    ).round()
                     bbox_xywh = []
                     confs = []
                     ## Adapt detections to deep sort input format
@@ -186,13 +206,19 @@ class YOLOV5_TRACKING:
                         bbox_xyxy = outputs[:, :4]
                         identities = outputs[:, -1]
                         draw_boxes(img_3, bbox_xyxy, identities)
-                    annotator = Annotator(img_3, line_width=3, example=str(self.model.names))
+                    annotator = Annotator(
+                        img_3, line_width=3, example=str(self.model.names)
+                    )
                     for *xyxy, conf, cls in reversed(det):
                         c = int(cls)  # integer class
                         label = (
                             None
                             if self.hide_labels
-                            else (self.model.names[c] if self.hide_conf else f"{self.model.names[c]} {conf:.2f}")
+                            else (
+                                self.model.names[c]
+                                if self.hide_conf
+                                else f"{self.model.names[c]} {conf:.2f}"
+                            )
                         )
                         annotator.box_label(xyxy, label, color=colors(c, True))
                 else:
@@ -220,14 +246,18 @@ def parse_opt():
         default="./test.mp4",
         help="file/dir/URL/glob, 0 for webcam",
     )
-    parser.add_argument("--img_size", nargs="+", default=(640, 640), help="inference size h,w")
+    parser.add_argument(
+        "--img_size", nargs="+", default=(640, 640), help="inference size h,w"
+    )
     parser.add_argument(
         "--classes",
         nargs="+",
         type=int,
         help="filter by class: --classes 0, or --classes 0 2 3",
     )
-    parser.add_argument("--type_mot", type=str, default="sort", help="type multi object tracking")
+    parser.add_argument(
+        "--type_mot", type=str, default="sort", help="type multi object tracking"
+    )
 
     opt = parser.parse_args()
     return opt
@@ -242,7 +272,9 @@ def main(opt):
             classes=opt["classes"],
             type_mot=opt["type_mot"],
         )
-        inference.infer_simple_object_recognition_tracking(source=opt["source"], view_video=True, save_img=False)
+        inference.infer_simple_object_recognition_tracking(
+            source=opt["source"], view_video=True, save_img=False
+        )
     elif opt["type_mot"] == "deep_sort":
         inference = YOLOV5_TRACKING(
             weights=opt["weights"],
@@ -258,7 +290,9 @@ def main(opt):
             classes=opt["classes"],
             type_mot=opt["type_mot"],
         )
-        inference.infer_object_detect(source=opt["source"], view_video=True, save_img=False)
+        inference.infer_object_detect(
+            source=opt["source"], view_video=True, save_img=False
+        )
 
 
 if __name__ == "__main__":

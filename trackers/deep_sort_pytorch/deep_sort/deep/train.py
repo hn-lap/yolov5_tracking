@@ -2,12 +2,11 @@ import argparse
 import os
 import time
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 import torchvision
-
 from model import Net
 
 parser = argparse.ArgumentParser(description="Train on market1501")
@@ -20,7 +19,11 @@ parser.add_argument("--resume", "-r", action="store_true")
 args = parser.parse_args()
 
 # device
-device = "cuda:{}".format(args.gpu_id) if torch.cuda.is_available() and not args.no_cuda else "cpu"
+device = (
+    "cuda:{}".format(args.gpu_id)
+    if torch.cuda.is_available() and not args.no_cuda
+    else "cpu"
+)
 if torch.cuda.is_available() and not args.no_cuda:
     cudnn.benchmark = True
 
@@ -44,10 +47,14 @@ transform_test = torchvision.transforms.Compose(
     ]
 )
 trainloader = torch.utils.data.DataLoader(
-    torchvision.datasets.ImageFolder(train_dir, transform=transform_train), batch_size=64, shuffle=True
+    torchvision.datasets.ImageFolder(train_dir, transform=transform_train),
+    batch_size=64,
+    shuffle=True,
 )
 testloader = torch.utils.data.DataLoader(
-    torchvision.datasets.ImageFolder(test_dir, transform=transform_test), batch_size=64, shuffle=True
+    torchvision.datasets.ImageFolder(test_dir, transform=transform_test),
+    batch_size=64,
+    shuffle=True,
 )
 num_classes = max(len(trainloader.dataset.classes), len(testloader.dataset.classes))
 

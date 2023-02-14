@@ -82,9 +82,13 @@ def convert_x_to_bbox(x, score=None):
     w = np.sqrt(x[2] * x[3])
     h = x[2] / w
     if score == None:
-        return np.array([x[0] - w / 2.0, x[1] - h / 2.0, x[0] + w / 2.0, x[1] + h / 2.0]).reshape((1, 4))
+        return np.array(
+            [x[0] - w / 2.0, x[1] - h / 2.0, x[0] + w / 2.0, x[1] + h / 2.0]
+        ).reshape((1, 4))
     else:
-        return np.array([x[0] - w / 2.0, x[1] - h / 2.0, x[0] + w / 2.0, x[1] + h / 2.0, score]).reshape((1, 5))
+        return np.array(
+            [x[0] - w / 2.0, x[1] - h / 2.0, x[0] + w / 2.0, x[1] + h / 2.0, score]
+        ).reshape((1, 5))
 
 
 """This class represents the internal state of individual tracked objects observed as bbox."""
@@ -122,12 +126,14 @@ class KalmanBoxTracker(object):
 
         self.kf.R[
             2:, 2:
-        ] *= (
-            10.0  # R: Covariance matrix of measurement noise (set to high for noisy inputs -> more 'inertia' of boxes')
-        )
-        self.kf.P[4:, 4:] *= 1000.0  # give high uncertainty to the unobservable initial velocities
+        ] *= 10.0  # R: Covariance matrix of measurement noise (set to high for noisy inputs -> more 'inertia' of boxes')
+        self.kf.P[
+            4:, 4:
+        ] *= 1000.0  # give high uncertainty to the unobservable initial velocities
         self.kf.P *= 10.0
-        self.kf.Q[-1, -1] *= 0.5  # Q: Covariance matrix of process noise (set to high for erratically moving things)
+        self.kf.Q[
+            -1, -1
+        ] *= 0.5  # Q: Covariance matrix of process noise (set to high for erratically moving things)
         self.kf.Q[4:, 4:] *= 0.5
 
         self.kf.x[:4] = convert_bbox_to_z(bbox)  # STATE VECTOR
@@ -300,7 +306,9 @@ class Sort(object):
         trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
         for t in reversed(to_del):
             self.trackers.pop(t)
-        matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets, trks, self.iou_threshold)
+        matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(
+            dets, trks, self.iou_threshold
+        )
 
         # Update matched trackers with assigned detections
         for m in matched:
@@ -315,7 +323,9 @@ class Sort(object):
         i = len(self.trackers)
         for trk in reversed(self.trackers):
             d = trk.get_state()[0]
-            if (trk.time_since_update < 1) and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits):
+            if (trk.time_since_update < 1) and (
+                trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits
+            ):
                 ret.append(
                     np.concatenate((d, [trk.id + 1])).reshape(1, -1)
                 )  # +1'd because MOT benchmark requires positive value
@@ -337,8 +347,12 @@ def parse_args():
         help="Display online tracker output (slow) [False]",
         action="store_true",
     )
-    parser.add_argument("--seq_path", help="Path to detections.", type=str, default="data")
-    parser.add_argument("--phase", help="Subdirectory in seq_path.", type=str, default="train")
+    parser.add_argument(
+        "--seq_path", help="Path to detections.", type=str, default="data"
+    )
+    parser.add_argument(
+        "--phase", help="Subdirectory in seq_path.", type=str, default="train"
+    )
     parser.add_argument(
         "--max_age",
         help="Maximum number of frames to keep alive a track without associated detections.",
@@ -351,7 +365,9 @@ def parse_args():
         type=int,
         default=3,
     )
-    parser.add_argument("--iou_threshold", help="Minimum IOU for match.", type=float, default=0.3)
+    parser.add_argument(
+        "--iou_threshold", help="Minimum IOU for match.", type=float, default=0.3
+    )
     args = parser.parse_args()
     return args
 
@@ -407,7 +423,8 @@ if __name__ == "__main__":
 
         for d in trackers:
             print(
-                "%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1" % (frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1]),
+                "%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1"
+                % (frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1]),
                 file=out_file,
             )
             if display:

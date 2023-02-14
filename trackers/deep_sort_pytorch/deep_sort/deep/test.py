@@ -1,10 +1,9 @@
-import torch
-import torch.backends.cudnn as cudnn
-import torchvision
-
 import argparse
 import os
 
+import torch
+import torch.backends.cudnn as cudnn
+import torchvision
 from model import Net
 
 parser = argparse.ArgumentParser(description="Train on market1501")
@@ -14,7 +13,11 @@ parser.add_argument("--gpu-id", default=0, type=int)
 args = parser.parse_args()
 
 # device
-device = "cuda:{}".format(args.gpu_id) if torch.cuda.is_available() and not args.no_cuda else "cpu"
+device = (
+    "cuda:{}".format(args.gpu_id)
+    if torch.cuda.is_available() and not args.no_cuda
+    else "cpu"
+)
 if torch.cuda.is_available() and not args.no_cuda:
     cudnn.benchmark = True
 
@@ -30,10 +33,14 @@ transform = torchvision.transforms.Compose(
     ]
 )
 queryloader = torch.utils.data.DataLoader(
-    torchvision.datasets.ImageFolder(query_dir, transform=transform), batch_size=64, shuffle=False
+    torchvision.datasets.ImageFolder(query_dir, transform=transform),
+    batch_size=64,
+    shuffle=False,
 )
 galleryloader = torch.utils.data.DataLoader(
-    torchvision.datasets.ImageFolder(gallery_dir, transform=transform), batch_size=64, shuffle=False
+    torchvision.datasets.ImageFolder(gallery_dir, transform=transform),
+    batch_size=64,
+    shuffle=False,
 )
 
 # net definition
@@ -68,5 +75,10 @@ with torch.no_grad():
 gallery_labels -= 2
 
 # save features
-features = {"qf": query_features, "ql": query_labels, "gf": gallery_features, "gl": gallery_labels}
+features = {
+    "qf": query_features,
+    "ql": query_labels,
+    "gf": gallery_features,
+    "gl": gallery_labels,
+}
 torch.save(features, "features.pth")

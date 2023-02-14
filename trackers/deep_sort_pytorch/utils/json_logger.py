@@ -3,9 +3,9 @@ References:
     https://medium.com/analytics-vidhya/creating-a-custom-logging-mechanism-for-real-time-object-detection-using-tdd-4ca2cfcd0a2f
 """
 import json
+from datetime import datetime
 from os import makedirs
 from os.path import exists, join
-from datetime import datetime
 
 
 class JsonMeta(object):
@@ -117,7 +117,11 @@ class Frame(BaseJsonLogger):
         if bbox_id not in bboxes_ids:
             self.bboxes.append(Bbox(bbox_id, top, left, width, height))
         else:
-            raise ValueError("Frame with id: {} already has a Bbox with id: {}".format(self.frame_id, bbox_id))
+            raise ValueError(
+                "Frame with id: {} already has a Bbox with id: {}".format(
+                    self.frame_id, bbox_id
+                )
+            )
 
     def add_label_to_bbox(self, bbox_id: int, category: str, confidence: float):
         bboxes = {bbox.id: bbox for bbox in self.bboxes}
@@ -239,11 +243,17 @@ class BboxToJsonLogger(BaseJsonLogger):
             ValueError: if bbox_id does not exist in the bbox list of specific frame.
         """
         if not self.bbox_exists(frame_id, bbox_id):
-            raise ValueError("frame with id: {} does not contain bbox with id: {}".format(frame_id, bbox_id))
+            raise ValueError(
+                "frame with id: {} does not contain bbox with id: {}".format(
+                    frame_id, bbox_id
+                )
+            )
         bboxes = {bbox.bbox_id: bbox for bbox in self.frames[frame_id].bboxes}
         return bboxes.get(bbox_id)
 
-    def add_bbox_to_frame(self, frame_id: int, bbox_id: int, top: int, left: int, width: int, height: int) -> None:
+    def add_bbox_to_frame(
+        self, frame_id: int, bbox_id: int, top: int, left: int, width: int, height: int
+    ) -> None:
         """
 
         Args:
@@ -267,12 +277,16 @@ class BboxToJsonLogger(BaseJsonLogger):
                 frame.add_bbox(bbox_id, top, left, width, height)
             else:
                 raise ValueError(
-                    "frame with frame_id: {} already contains the bbox with id: {} ".format(frame_id, bbox_id)
+                    "frame with frame_id: {} already contains the bbox with id: {} ".format(
+                        frame_id, bbox_id
+                    )
                 )
         else:
             raise ValueError("frame with frame_id: {} does not exist".format(frame_id))
 
-    def add_label_to_bbox(self, frame_id: int, bbox_id: int, category: str, confidence: float):
+    def add_label_to_bbox(
+        self, frame_id: int, bbox_id: int, category: str, confidence: float
+    ):
         """
         Args:
             frame_id:
@@ -290,10 +304,18 @@ class BboxToJsonLogger(BaseJsonLogger):
         if not bbox.labels_full(self.top_k_labels):
             bbox.add_label(category, confidence)
         else:
-            raise ValueError("labels in frame_id: {}, bbox_id: {} is fulled".format(frame_id, bbox_id))
+            raise ValueError(
+                "labels in frame_id: {}, bbox_id: {} is fulled".format(
+                    frame_id, bbox_id
+                )
+            )
 
     def add_video_details(
-        self, frame_width: int = None, frame_height: int = None, frame_rate: int = None, video_name: str = None
+        self,
+        frame_width: int = None,
+        frame_height: int = None,
+        frame_rate: int = None,
+        video_name: str = None,
     ):
         self.video_details["frame_width"] = frame_width
         self.video_details["frame_height"] = frame_height
@@ -327,7 +349,11 @@ class BboxToJsonLogger(BaseJsonLogger):
         self.start_time = datetime.now()
 
     def schedule_output_by_time(
-        self, output_dir=JsonMeta.PATH_TO_SAVE, hours: int = 0, minutes: int = 0, seconds: int = 60
+        self,
+        output_dir=JsonMeta.PATH_TO_SAVE,
+        hours: int = 0,
+        minutes: int = 0,
+        seconds: int = 60,
     ) -> None:
         """
         Notes:
@@ -359,7 +385,9 @@ class BboxToJsonLogger(BaseJsonLogger):
             self.frames = {}
             self.start_time = datetime.now()
 
-    def schedule_output_by_frames(self, frames_quota, frame_counter, output_dir=JsonMeta.PATH_TO_SAVE):
+    def schedule_output_by_frames(
+        self, frames_quota, frame_counter, output_dir=JsonMeta.PATH_TO_SAVE
+    ):
         """
         saves as the number of frames quota increases higher.
         :param frames_quota:

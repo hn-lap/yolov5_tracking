@@ -16,9 +16,13 @@ class BasicBlock(nn.Module):
         self.conv2 = nn.Conv2d(c_out, c_out, 3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(c_out)
         if is_downsample:
-            self.downsample = nn.Sequential(nn.Conv2d(c_in, c_out, 1, stride=2, bias=False), nn.BatchNorm2d(c_out))
+            self.downsample = nn.Sequential(
+                nn.Conv2d(c_in, c_out, 1, stride=2, bias=False), nn.BatchNorm2d(c_out)
+            )
         elif c_in != c_out:
-            self.downsample = nn.Sequential(nn.Conv2d(c_in, c_out, 1, stride=1, bias=False), nn.BatchNorm2d(c_out))
+            self.downsample = nn.Sequential(
+                nn.Conv2d(c_in, c_out, 1, stride=1, bias=False), nn.BatchNorm2d(c_out)
+            )
             self.is_downsample = True
 
     def forward(self, x):

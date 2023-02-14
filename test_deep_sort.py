@@ -1,22 +1,15 @@
-import torch
-
-import cv2
 from typing import Tuple
 
 import cv2
 import torch
 
+from graphs import bbox_rel, draw_bbox, draw_boxes
 from models.common import DetectMultiBackend
 from trackers import *
 from utils.dataloaders import LoadImages
-from utils.general import (
-    check_img_size,
-    non_max_suppression,
-    scale_coords,
-)
-from utils.torch_utils import select_device
+from utils.general import check_img_size, non_max_suppression, scale_coords
 from utils.plots import Annotator, colors
-from graphs import draw_boxes, bbox_rel, draw_bbox
+from utils.torch_utils import select_device
 
 
 @torch.no_grad()
@@ -72,7 +65,9 @@ def run(
         # Inference
         pred = model(im, augment=augment)
         # NMS
-        pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+        pred = non_max_suppression(
+            pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det
+        )
 
         # Process predictions
         for i, det in enumerate(pred):  # detections per image
@@ -102,14 +97,22 @@ def run(
                 if len(outputs) > 0:
                     bbox_xyxy = outputs[:, :4]
                     identities = outputs[:, -1]
-                    draw_boxes(im0, bbox_xyxy, identities)  # call function to draw seperate object identity
+                    draw_boxes(
+                        im0, bbox_xyxy, identities
+                    )  # call function to draw seperate object identity
 
-                annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+                annotator = Annotator(
+                    im0, line_width=line_thickness, example=str(names)
+                )
                 # yolo write detection result
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     c = int(cls)  # integer class
-                    label = None if hide_labels else (names[c] if hide_conf else f"{names[c]} {conf:.2f}")
+                    label = (
+                        None
+                        if hide_labels
+                        else (names[c] if hide_conf else f"{names[c]} {conf:.2f}")
+                    )
                     annotator.box_label(xyxy, label, color=colors(c, True))
 
             else:

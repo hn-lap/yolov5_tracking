@@ -13,7 +13,12 @@ from shapely.geometry.polygon import Polygon
 from models.common import DetectMultiBackend
 from trackers.sort import *
 from utils.dataloaders import LoadImages, LoadStreams
-from utils.general import check_img_size, increment_path, non_max_suppression, scale_coords
+from utils.general import (
+    check_img_size,
+    increment_path,
+    non_max_suppression,
+    scale_coords,
+)
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -58,7 +63,9 @@ def infer(
         model.model.half() if half else model.model.float()
     if source.isnumeric():
         cudnn.benchmark = True
-        dataset = LoadStreams(source, img_size=imgsz, stride=model.stride, auto=model.pt)
+        dataset = LoadStreams(
+            source, img_size=imgsz, stride=model.stride, auto=model.pt
+        )
         batch_size = len(dataset)
     else:
         dataset = LoadImages(source, img_size=imgsz, stride=model.stride, auto=model.pt)
@@ -73,7 +80,9 @@ def infer(
         save_dir = "/"
         visualize = increment_path(save_dir, mkdir=True) if visualize else False
         prediction = model(img, augment=False, visualize=visualize)
-        prediction = non_max_suppression(prediction, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+        prediction = non_max_suppression(
+            prediction, conf_thres, iou_thres, classes, agnostic_nms, max_det
+        )
 
         for i, det in enumerate(prediction):
             if source.isnumeric():
@@ -94,7 +103,9 @@ def infer(
                 dets_to_sort = np.empty((0, 6))
                 # NOTE: We send in detected object class too
                 for x1, y1, x2, y2, conf, detclass in det.cpu().detach().numpy():
-                    dets_to_sort = np.vstack((dets_to_sort, np.array([x1, y1, x2, y2, conf, detclass])))
+                    dets_to_sort = np.vstack(
+                        (dets_to_sort, np.array([x1, y1, x2, y2, conf, detclass]))
+                    )
                 tracked_dets = sort_tracker.update(dets_to_sort)
                 tracks = sort_tracker.getTrackers()
 
@@ -118,9 +129,13 @@ def infer(
                         )
                         label = str(id)
 
-                        (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+                        (w, h), _ = cv2.getTextSize(
+                            label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1
+                        )
                         cv2.rectangle(img0, (x1, y1), (x2, y2), (255, 191, 0), 2)
-                        cv2.rectangle(img0, (x1, y1 - 20), (x1 + w, y1), (255, 191, 0), -1)
+                        cv2.rectangle(
+                            img0, (x1, y1 - 20), (x1 + w, y1), (255, 191, 0), -1
+                        )
                         cv2.putText(
                             img0,
                             label,
@@ -134,7 +149,9 @@ def infer(
                         if points is not None:
                             img0 = draw_polygon(img0, points)
 
-                            if (shapely.contains(Polygon(points), Point(centroid))) == True:
+                            if (
+                                shapely.contains(Polygon(points), Point(centroid))
+                            ) == True:
                                 print("Save image")
                                 img = save_frame_alert(img0, "test")
                                 for track in tracks:
@@ -175,10 +192,18 @@ def parse_opt():
         default=ROOT / "data/images",
         help="file/dir/URL/glob, 0 for webcam",
     )
-    parser.add_argument("--img_size", nargs="+", default=(640, 640), help="inference size h,w")
-    parser.add_argument("--conf_thres", type=float, default=0.25, help="confidence threshold")
-    parser.add_argument("--iou_thres", type=float, default=0.45, help="NMS IoU threshold")
-    parser.add_argument("--max_det", type=int, default=1000, help="maximum detections per image")
+    parser.add_argument(
+        "--img_size", nargs="+", default=(640, 640), help="inference size h,w"
+    )
+    parser.add_argument(
+        "--conf_thres", type=float, default=0.25, help="confidence threshold"
+    )
+    parser.add_argument(
+        "--iou_thres", type=float, default=0.45, help="NMS IoU threshold"
+    )
+    parser.add_argument(
+        "--max_det", type=int, default=1000, help="maximum detections per image"
+    )
     parser.add_argument("--view_img", action="store_false", help="show results")
     parser.add_argument(
         "--classes",
@@ -186,9 +211,13 @@ def parse_opt():
         type=int,
         help="filter by class: --classes 0, or --classes 0 2 3",
     )
-    parser.add_argument("--agnostic_nms", action="store_true", help="class-agnostic NMS")
+    parser.add_argument(
+        "--agnostic_nms", action="store_true", help="class-agnostic NMS"
+    )
     parser.add_argument("--visualize", action="store_true", help="visualize features")
-    parser.add_argument("--half", action="store_true", help="use FP16 half-precision inference")
+    parser.add_argument(
+        "--half", action="store_true", help="use FP16 half-precision inference"
+    )
 
     opt = parser.parse_args()
     return opt

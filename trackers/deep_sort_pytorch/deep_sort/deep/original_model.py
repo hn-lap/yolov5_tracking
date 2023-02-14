@@ -16,9 +16,13 @@ class BasicBlock(nn.Module):
         self.conv2 = nn.Conv2d(c_out, c_out, 3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(c_out)
         if is_downsample:
-            self.downsample = nn.Sequential(nn.Conv2d(c_in, c_out, 1, stride=2, bias=False), nn.BatchNorm2d(c_out))
+            self.downsample = nn.Sequential(
+                nn.Conv2d(c_in, c_out, 1, stride=2, bias=False), nn.BatchNorm2d(c_out)
+            )
         elif c_in != c_out:
-            self.downsample = nn.Sequential(nn.Conv2d(c_in, c_out, 1, stride=1, bias=False), nn.BatchNorm2d(c_out))
+            self.downsample = nn.Sequential(
+                nn.Conv2d(c_in, c_out, 1, stride=1, bias=False), nn.BatchNorm2d(c_out)
+            )
             self.is_downsample = True
 
     def forward(self, x):
@@ -67,7 +71,10 @@ class Net(nn.Module):
         self.layer3 = make_layers(64, 128, 2, True)
         # 128 16 8
         self.dense = nn.Sequential(
-            nn.Dropout(p=0.6), nn.Linear(128 * 16 * 8, 128), nn.BatchNorm1d(128), nn.ELU(inplace=True)
+            nn.Dropout(p=0.6),
+            nn.Linear(128 * 16 * 8, 128),
+            nn.BatchNorm1d(128),
+            nn.ELU(inplace=True),
         )
         # 256 1 1
         self.reid = reid
