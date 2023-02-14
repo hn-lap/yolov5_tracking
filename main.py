@@ -1,5 +1,4 @@
 import cv2
-
 from object_tracking import draw_polygon, infer
 
 

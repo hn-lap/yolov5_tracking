@@ -9,7 +9,9 @@ app.config["SAVE_IMAGE_UPLOAD"] = "static"
 app.config["SAVE_IMAGE_RESULT"] = "results"
 
 
-model = YOLOV5_SORT(weights="../saved_models/yolov5s.pt", img_size=(640, 640), classes=0, tracking=False)
+model = YOLOV5_SORT(
+    weights="../saved_models/yolov5s.pt", img_size=(640, 640), classes=0, tracking=False
+)
 
 
 @app.route("/isAlive", methods=["GET"])
@@ -23,7 +25,9 @@ def predict():
     path_to_save = os.path.join(app.config["SAVE_IMAGE_UPLOAD"], image.filename)
     image.save(path_to_save)
     img_results = model.infer(path_to_save)
-    cv2.imwrite(os.path.join(app.config["SAVE_IMAGE_RESULT"], image.filename), img_results)
+    cv2.imwrite(
+        os.path.join(app.config["SAVE_IMAGE_RESULT"], image.filename), img_results
+    )
     return str(img_results)
 
 
