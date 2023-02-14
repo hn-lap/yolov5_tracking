@@ -13,12 +13,8 @@ from shapely.geometry.polygon import Polygon
 from models.common import DetectMultiBackend
 from trackers.sort import *
 from utils.dataloaders import LoadImages, LoadStreams
-from utils.general import (
-    check_img_size,
-    increment_path,
-    non_max_suppression,
-    scale_coords,
-)
+from utils.general import (check_img_size, increment_path, non_max_suppression,
+                           scale_coords)
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -170,6 +166,24 @@ def infer(
                                                 (124, 32, 250),
                                                 thickness=3,
                                             )
+
+                        # if points == None:
+                        #     for track in tracks:
+                        #         for i, _ in enumerate(track.centroidarr):
+                        #             if i < len(track.centroidarr) - 1:
+                        #                 cv2.line(
+                        #                     img0,
+                        #                     (
+                        #                         int(track.centroidarr[i][0]),
+                        #                         int(track.centroidarr[i][1]),
+                        #                     ),
+                        #                     (
+                        #                         int(track.centroidarr[i + 1][0]),
+                        #                         int(track.centroidarr[i + 1][1]),
+                        #                     ),
+                        #                     (124, 32, 250),
+                        #                     thickness=3,
+                        #                 )
             if view_img:
                 cv2.imshow(str(p), img0)
                 cv2.waitKey(1)

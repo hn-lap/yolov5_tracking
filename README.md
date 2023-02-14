@@ -17,9 +17,7 @@ pip install -r setup.txt
 ```
 
 ## Run
-
 1. Run object tracking
-
 ```python
 # Run object detection
 sh scripts/object_detect.sh

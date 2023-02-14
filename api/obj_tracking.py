@@ -1,13 +1,18 @@
+import os
+import sys
+from pathlib import Path
 from typing import Tuple
 
 import cv2
 import torch
+import torch.backends.cudnn as cudnn
+from draws import draw_boxes
+from tracker.sort import *
 
 from models.common import DetectMultiBackend
-from trackers.sort import *
-from utils import draw_boxes
-from utils.dataloaders import LoadImages
-from utils.general import check_img_size, non_max_suppression, scale_coords
+from utils.dataloaders import LoadImages, LoadStreams
+from utils.general import (check_img_size, increment_path, non_max_suppression,
+                           scale_coords)
 from utils.plots import Annotator, colors
 
 
@@ -110,5 +115,7 @@ if __name__ == "__main__":
         classes=0,
         tracking=False,
     )
+    import cv2
+
     img = cv2.imread("G:/HN_LAP/yolov5_tracking/test_folder/1.jpg")
     inference.infer(source=img)
