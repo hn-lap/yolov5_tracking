@@ -22,16 +22,20 @@ pip install -r setup.txt
 
 ```python
 # Run object detection
-python object_detect.py --weights ./saved_models/yolov5s.pt --source 2.mp4 --classes 0
+sh scripts/object_detect.sh
 ```
 
-2. Run object tracking
+2. Run object detection + tracking (yolov5 + sort)
 
 ```python
 # Run object detection + tracking (yolov5 + sort)
-python object_tracking.py --weights ./saved_models/yolov5s.pt --source 2.mp4 --classes 0
+sh scripts/object_sort.sh
 ```
-
+3. Run object detection + tracking (yolov5 + deep sort) 
+```python
+# Run object detection + tracking (yolov5 + deep_sort)
+sh scripts/object_deep_sort.sh
+```
 ## Model library
 
 | **2D Detection** | **Multi Object Tracking** | others |

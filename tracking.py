@@ -18,7 +18,7 @@ class YOLOV5_TRACKING:
         img_size: Tuple[int],
         classes: str,
         type_mot: str = "deep_sort",
-        config_file: str = "./trackers/deep_sort_pytorch/configs/deep_sort.yaml",
+        config_file: str = "trackers/deep_sort_pytorch/configs/deep_sort.yaml",
     ) -> None:
         self.weights = weights
         self.img_size = img_size
